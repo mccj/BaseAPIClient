@@ -20,13 +20,21 @@ namespace SDK.BaseAPI
     {
         string ErrorMessage { get; }
     }
-    public class ApiException2 : Exception
+    public class ApiException : Exception
     {
-        public ApiException2(string message) : base(message) { }
-        public ApiException2(IErrorResponse error) : base(error.ErrorMessage)
+        public ApiException(string message) : base(message) { }
+        public ApiException(IErrorResponse error) : base(error.ErrorMessage)
         {
             this.Error = error;
         }
         public IErrorResponse Error { get; }
+
+        public ApiException()
+        {
+        }
+
+        public ApiException(string message, Exception innerException) : base(message, innerException)
+        {
+        }
     }
 }
