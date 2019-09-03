@@ -83,9 +83,9 @@ namespace SDK.BaseAPI
         /// 请求客户端
         /// </summary>
         //protected HttpClient httpClient { get; }
-        protected virtual System.Net.Http.Formatting.MediaTypeFormatter Formatter { get; }// = new System.Net.Http.Formatting.JsonMediaTypeFormatter { Indent = false, UseDataContractJsonSerializer = false };
+        protected internal virtual System.Net.Http.Formatting.MediaTypeFormatter Formatter { get; }// = new System.Net.Http.Formatting.JsonMediaTypeFormatter { Indent = false, UseDataContractJsonSerializer = false };
         //protected virtual System.Net.Http.Formatting.MediaTypeFormatter Formatter { get; } = new System.Net.Http.Formatting.XmlMediaTypeFormatter { UseXmlSerializer = true, Indent = true };
-        protected virtual System.Net.Http.Formatting.MediaTypeFormatter[] Formatters { get { return new[] { Formatter }; } }
+        protected internal virtual System.Net.Http.Formatting.MediaTypeFormatter[] Formatters { get { return new[] { Formatter }; } }
         #endregion 属性
         #region 方法
         public string TestSerialize(object o)
@@ -231,8 +231,8 @@ namespace SDK.BaseAPI
         #endregion Put
         #endregion 方法
         #region 内容解析方法
-        protected virtual Type ErrorType { get; }
-        protected virtual object ErrorHandle(Type type, HttpResponseMessage message) { return null; }
+        protected internal virtual Type ErrorType { get; }
+        protected internal virtual object ErrorHandle(Type type, HttpResponseMessage message) { return null; }
         private T GetResultContent<T>(Task<HttpResponseMessage> task)
         {
             try
@@ -362,7 +362,7 @@ namespace SDK.BaseAPI
         {
             return Encoding.UTF8.GetString(Convert.FromBase64String(value));
         }
-        protected virtual System.Net.Http.Formatting.MediaTypeFormatter GetMediaTypeFormatter(MediaType mediaType, params string[] supportedMediaTypes)
+        protected internal virtual System.Net.Http.Formatting.MediaTypeFormatter GetMediaTypeFormatter(MediaType mediaType, params string[] supportedMediaTypes)
         {
             //bool setPropertySettingsFromAttributes = true, isContractNHibernateProxy = false;
             System.Net.Http.Formatting.MediaTypeFormatter formatter = null;
