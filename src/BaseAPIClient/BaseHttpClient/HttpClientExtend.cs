@@ -83,7 +83,7 @@ namespace SDK.BaseAPI
         /// 请求客户端
         /// </summary>
         //protected HttpClient httpClient { get; }
-        protected internal virtual System.Net.Http.Formatting.MediaTypeFormatter Formatter { get; }// = new System.Net.Http.Formatting.JsonMediaTypeFormatter { Indent = false, UseDataContractJsonSerializer = false };
+        protected internal virtual System.Net.Http.Formatting.MediaTypeFormatter Formatter { get; private set; }// = new System.Net.Http.Formatting.JsonMediaTypeFormatter { Indent = false, UseDataContractJsonSerializer = false };
         //protected virtual System.Net.Http.Formatting.MediaTypeFormatter Formatter { get; } = new System.Net.Http.Formatting.XmlMediaTypeFormatter { UseXmlSerializer = true, Indent = true };
         protected internal virtual System.Net.Http.Formatting.MediaTypeFormatter[] Formatters { get { return new[] { Formatter }; } }
         #endregion 属性
@@ -231,8 +231,14 @@ namespace SDK.BaseAPI
         #endregion Put
         #endregion 方法
         #region 内容解析方法
-        protected internal virtual Type ErrorType { get; }
-        protected internal virtual object ErrorHandle(Type type, HttpResponseMessage message) { return null; }
+        protected internal virtual Type ErrorType { get; private set; }
+        //protected internal virtual object ErrorHandle(Type type, HttpResponseMessage message) { return null; }
+        protected internal virtual Func<Type, HttpResponseMessage, object> ErrorHandle { get; private set; } = new Func<Type, HttpResponseMessage, object>((type, message) => null);
+
+        public void SetErrorType(Type type) => this.ErrorType = type;
+        public void SetErrorHandle(Func<Type, HttpResponseMessage, object> errorHandle) => this.ErrorHandle = errorHandle;
+        public void SetFormatter(System.Net.Http.Formatting.MediaTypeFormatter formatter) => this.Formatter = formatter;
+
         private T GetResultContent<T>(Task<HttpResponseMessage> task)
         {
             try
