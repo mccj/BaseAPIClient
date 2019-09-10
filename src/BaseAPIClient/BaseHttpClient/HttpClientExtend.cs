@@ -236,11 +236,11 @@ namespace SDK.BaseAPI
         //protected internal virtual object ErrorHandle(Type type, HttpResponseMessage message) { return null; }
         protected internal virtual Func<Type, HttpResponseMessage, object> ErrorHandle { get; private set; } = new Func<Type, HttpResponseMessage, object>((type, message) => null);
 
-        public void SetErrorType(Type type) => this.ErrorType = type;
-        public void SetErrorHandle(Func<Type, HttpResponseMessage, object> errorHandle) => this.ErrorHandle = errorHandle;
-        public void SetFormatter(System.Net.Http.Formatting.MediaTypeFormatter formatter) { if (formatter != null) this.Formatter = formatter; }
-        public void SetFormatters(System.Net.Http.Formatting.MediaTypeFormatter[] formatters) { if (formatters != null) this.Formatters = formatters; }
-        public void SetMediaTypeFormatter(Func<MediaType, string[], System.Net.Http.Formatting.MediaTypeFormatter> func) { if (func != null) this.getMediaTypeFormatterFunc = func; }
+        protected internal void SetErrorType(Type type) => this.ErrorType = type;
+        protected internal void SetErrorHandle(Func<Type, HttpResponseMessage, object> errorHandle) => this.ErrorHandle = errorHandle;
+        protected internal void SetFormatter(System.Net.Http.Formatting.MediaTypeFormatter formatter) { if (formatter != null) this.Formatter = formatter; }
+        protected internal void SetFormatters(System.Net.Http.Formatting.MediaTypeFormatter[] formatters) { if (formatters != null) this.Formatters = formatters; }
+        protected internal void SetMediaTypeFormatter(Func<MediaType, string[], System.Net.Http.Formatting.MediaTypeFormatter> func) { if (func != null) this.getMediaTypeFormatterFunc = func; }
         private T GetResultContent<T>(Task<HttpResponseMessage> task)
         {
             try
