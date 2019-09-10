@@ -39,6 +39,8 @@ namespace SDK.BaseAPI
         }
         #endregion 构造函数
 
+        protected internal Uri BaseAddress { get { return this.Client.BaseAddress; } set { this.Client.BaseAddress = value; } }
+
         protected internal HttpClientExtend Client { get; } = null;
         protected internal virtual Type ErrorType { get; } = null;
         protected internal virtual object ErrorHandle(Type type, HttpResponseMessage message) { return null; }
