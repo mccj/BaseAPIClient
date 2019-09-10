@@ -31,9 +31,22 @@ namespace SDK.BaseAPI
         public BaseHttpClient(HttpClientHandler handler, Uri url = null, MediaType mediaType = MediaType.Json, string[] supportedMediaTypes = null, bool ifNullRemove = true)
         {
             Client = new HttpClientExtend(handler, url, mediaType, supportedMediaTypes, ifNullRemove);
+            Client.SetErrorType(this.ErrorType);
+            Client.SetErrorHandle(this.ErrorHandle);
+            Client.SetFormatter(this.Formatter);
+            Client.SetFormatters(this.Formatters);
+            Client.SetMediaTypeFormatter(this.GetMediaTypeFormatter);
         }
         #endregion 构造函数
 
-        protected internal HttpClientExtend Client { get; }
+        protected internal HttpClientExtend Client { get; } = null;
+        protected internal virtual Type ErrorType { get; } = null;
+        protected internal virtual object ErrorHandle(Type type, HttpResponseMessage message) { return null; }
+        protected internal virtual System.Net.Http.Formatting.MediaTypeFormatter Formatter { get; } = null;
+        protected internal virtual System.Net.Http.Formatting.MediaTypeFormatter[] Formatters { get; } = null;
+        protected internal virtual System.Net.Http.Formatting.MediaTypeFormatter GetMediaTypeFormatter(MediaType mediaType, params string[] supportedMediaTypes)
+        {
+            return null;
+        }
     }
 }

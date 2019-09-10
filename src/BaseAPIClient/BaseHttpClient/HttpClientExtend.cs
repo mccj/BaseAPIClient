@@ -85,7 +85,8 @@ namespace SDK.BaseAPI
         //protected HttpClient httpClient { get; }
         protected internal virtual System.Net.Http.Formatting.MediaTypeFormatter Formatter { get; private set; }// = new System.Net.Http.Formatting.JsonMediaTypeFormatter { Indent = false, UseDataContractJsonSerializer = false };
         //protected virtual System.Net.Http.Formatting.MediaTypeFormatter Formatter { get; } = new System.Net.Http.Formatting.XmlMediaTypeFormatter { UseXmlSerializer = true, Indent = true };
-        protected internal virtual System.Net.Http.Formatting.MediaTypeFormatter[] Formatters { get { return new[] { Formatter }; } }
+        protected internal virtual System.Net.Http.Formatting.MediaTypeFormatter[] Formatters { get { return _formatters ?? new[] { Formatter }; } private set { _formatters = value; } }
+        protected System.Net.Http.Formatting.MediaTypeFormatter[] _formatters = null;
         #endregion 属性
         #region 方法
         public string TestSerialize(object o)
@@ -231,14 +232,15 @@ namespace SDK.BaseAPI
         #endregion Put
         #endregion 方法
         #region 内容解析方法
-        protected internal virtual Type ErrorType { get; private set; }
+        protected internal virtual Type ErrorType { get; private set; } = null;
         //protected internal virtual object ErrorHandle(Type type, HttpResponseMessage message) { return null; }
         protected internal virtual Func<Type, HttpResponseMessage, object> ErrorHandle { get; private set; } = new Func<Type, HttpResponseMessage, object>((type, message) => null);
 
         public void SetErrorType(Type type) => this.ErrorType = type;
         public void SetErrorHandle(Func<Type, HttpResponseMessage, object> errorHandle) => this.ErrorHandle = errorHandle;
-        public void SetFormatter(System.Net.Http.Formatting.MediaTypeFormatter formatter) => this.Formatter = formatter;
-
+        public void SetFormatter(System.Net.Http.Formatting.MediaTypeFormatter formatter) { if (formatter != null) this.Formatter = formatter; }
+        public void SetFormatters(System.Net.Http.Formatting.MediaTypeFormatter[] formatters) { if (formatters != null) this.Formatters = formatters; }
+        public void SetMediaTypeFormatter(Func<MediaType, string[], System.Net.Http.Formatting.MediaTypeFormatter> func) { if (func != null) this.getMediaTypeFormatterFunc = func; }
         private T GetResultContent<T>(Task<HttpResponseMessage> task)
         {
             try
@@ -306,7 +308,7 @@ namespace SDK.BaseAPI
                 //3.是否实现了自定义错误处理方法，有则执行错误处理方法
                 {
                     //var str = message.Content?.ReadAsStringAsync()?.Result;//解析响应体。阻塞！
-                    var result = this.ErrorHandle(typeof(T), message);
+                    var result = this.ErrorHandle?.Invoke(typeof(T), message);
                     if (result != null)
                         return (T)result;
                     else
@@ -368,8 +370,13 @@ namespace SDK.BaseAPI
         {
             return Encoding.UTF8.GetString(Convert.FromBase64String(value));
         }
+        private Func<MediaType, string[], System.Net.Http.Formatting.MediaTypeFormatter> getMediaTypeFormatterFunc = null;
         protected internal virtual System.Net.Http.Formatting.MediaTypeFormatter GetMediaTypeFormatter(MediaType mediaType, params string[] supportedMediaTypes)
         {
+            var rr = getMediaTypeFormatterFunc?.Invoke(mediaType, supportedMediaTypes);
+            if (rr != null) return rr;
+
+
             //bool setPropertySettingsFromAttributes = true, isContractNHibernateProxy = false;
             System.Net.Http.Formatting.MediaTypeFormatter formatter = null;
             switch (mediaType)
