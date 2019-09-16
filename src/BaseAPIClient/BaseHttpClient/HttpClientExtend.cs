@@ -15,6 +15,7 @@ namespace SDK.BaseAPI
     public class HttpClientExtend : HttpClient
     {
         private readonly bool _ifNullRemove;
+        private readonly ResultContent resultContent = new ResultContent();
         #region 构造函数
         public HttpClientExtend(MediaType mediaType = MediaType.Json, string[] supportedMediaTypes = null) : this(string.Empty, mediaType, supportedMediaTypes) { }
         public HttpClientExtend(string url, MediaType mediaType = MediaType.Json, string[] supportedMediaTypes = null) : this(string.IsNullOrWhiteSpace(url) ? null : new Uri(url), mediaType, supportedMediaTypes) { }
@@ -117,6 +118,15 @@ namespace SDK.BaseAPI
             var formatter = mediaType == null ? this.Formatter : GetMediaTypeFormatter(mediaType.Value);
             return formatter.Deserialize<T>(str);
         }
+
+        public ObjectContent<T> CreateHttpContent<T>(T value, string mediaType = null)
+        {
+            return new ObjectContent<T>(value, this.Formatter, mediaType);
+        }
+        public ObjectContent CreateHttpContent(Type type, object value, string mediaType = null)
+        {
+            return new ObjectContent(type, value, this.Formatter, mediaType);
+        }
         #region Get
         public TResponse Get<TResponse>(string requestUri)
         {
@@ -129,7 +139,7 @@ namespace SDK.BaseAPI
         public Task<TResponse> GetAsync<TResponse>(string requestUri)
         {
             var task = this.GetAsync(requestUri);
-            return GetResultContentAsync<TResponse>(task);
+            return resultContent.GetResultContentAsync<TResponse>(task, this.Formatters, this.ErrorType, this.ErrorHandle);
             //return HttpClientExtensions.PostAsync(this, requestUri, value, Formatter);
         }
         public Task<TResponse> GetAsync<TResponse>(string requestUri, IEnumerable<KeyValuePair<string, string>> nameValueCollection)
@@ -186,7 +196,7 @@ namespace SDK.BaseAPI
         {
             var dic = _ifNullRemove ? (nameValueCollection.Where(f => !string.IsNullOrWhiteSpace(f.Key) && f.Value != null && !string.IsNullOrWhiteSpace(f.Value.ToString()))) : nameValueCollection;
             var task = base.PostAsync(requestUri, new FormUrlEncodedContent(dic));
-            return GetResultContentAsync<TResponse>(task);
+            return resultContent.GetResultContentAsync<TResponse>(task, this.Formatters, this.ErrorType, this.ErrorHandle);
         }
         //public TResponse PostFormUrlAsync<TResponse>(string requestUri, string query)
         //{
@@ -196,7 +206,7 @@ namespace SDK.BaseAPI
         public Task<TResponse> PostBytesAsync<TResponse>(string requestUri, byte[] bytes, string mediaType = null)
         {
             var task = PostBytesAsync(requestUri, bytes, mediaType);
-            return GetResultContentAsync<TResponse>(task);
+            return resultContent.GetResultContentAsync<TResponse>(task, this.Formatters, this.ErrorType, this.ErrorHandle);
         }
         public Task<HttpResponseMessage> PostBytesAsync(string requestUri, byte[] bytes, string mediaType = null)
         {
@@ -212,12 +222,12 @@ namespace SDK.BaseAPI
         public Task<TResponse> PostStringAsync<TResponse>(string requestUri, string str, Encoding encoding = null, string mediaType = null)
         {
             var task = base.PostAsync(requestUri, new StringContent(str, encoding, mediaType));
-            return GetResultContentAsync<TResponse>(task);
+            return resultContent.GetResultContentAsync<TResponse>(task, this.Formatters, this.ErrorType, this.ErrorHandle);
         }
         public Task<TResponse> PostStreamAsync<TResponse>(string requestUri, Stream content)
         {
             var task = base.PostAsync(requestUri, new StreamContent(content));
-            return GetResultContentAsync<TResponse>(task);
+            return resultContent.GetResultContentAsync<TResponse>(task, this.Formatters, this.ErrorType, this.ErrorHandle);
         }
 
         public Task<HttpResponseMessage> PostAsync<TRequest>(string requestUri, TRequest value, string mediaType = null)
@@ -240,12 +250,12 @@ namespace SDK.BaseAPI
             if (value is HttpContent)
             {
                 var task = base.PostAsync(requestUri, value as HttpContent);
-                return GetResultContentAsync<TResponse>(task);
+                return resultContent.GetResultContentAsync<TResponse>(task, this.Formatters, this.ErrorType, this.ErrorHandle);
             }
             else
             {
                 var task = HttpClientExtensions.PostAsync(this, requestUri, value, Formatter, mediaType);
-                return GetResultContentAsync<TResponse>(task);
+                return resultContent.GetResultContentAsync<TResponse>(task, this.Formatters, this.ErrorType, this.ErrorHandle);
                 //return this.PostAsync<string, string>("api/WebErp.Orders/Order/GetOrdersByExpression?count={count}".Replace("{count}", System.Convert.ToString(count)), predicate);//?.Result?.GetResultContent<Order[]>(this.MediaTypeFormatters);
             }
         }
@@ -254,13 +264,23 @@ namespace SDK.BaseAPI
             if (value is HttpContent)
             {
                 var task = base.PostAsync(requestUri, value as HttpContent);
-                return GetResultContentAsync<TResponse>(task);
+                return resultContent.GetResultContentAsync<TResponse>(task, this.Formatters, this.ErrorType, this.ErrorHandle);
             }
             else
             {
                 var task = HttpClientExtensions.PostAsync(this, requestUri, value, Formatter, mediaType);
-                return GetResultContentAsync<TResponse>(task);
+                return resultContent.GetResultContentAsync<TResponse>(task, this.Formatters, this.ErrorType, this.ErrorHandle);
             }
+        }
+        public Task<TResponse> PostContentAsync<TResponse>(Uri requestUri, HttpContent httpContent)
+        {
+            var task = base.PostAsync(requestUri, httpContent);
+            return resultContent.GetResultContentAsync<TResponse>(task, this.Formatters, this.ErrorType, this.ErrorHandle);
+        }
+        public Task<TResponse> PostContentAsync<TResponse>(string requestUri, HttpContent httpContent)
+        {
+            var task = base.PostAsync(requestUri, httpContent);
+            return resultContent.GetResultContentAsync<TResponse>(task, this.Formatters, this.ErrorType, this.ErrorHandle);
         }
         #endregion Post
         #region Put
@@ -280,6 +300,16 @@ namespace SDK.BaseAPI
         {
             return HttpClientExtensions.PutAsync(this, requestUri, value, Formatter, mediaType);
         }
+        public Task<TResponse> PutContentAsync<TResponse>(Uri requestUri, HttpContent httpContent)
+        {
+            var task = base.PutAsync(requestUri, httpContent);
+            return resultContent.GetResultContentAsync<TResponse>(task, this.Formatters, this.ErrorType, this.ErrorHandle);
+        }
+        public Task<TResponse> PutContentAsync<TResponse>(string requestUri, HttpContent httpContent)
+        {
+            var task = base.PutAsync(requestUri, httpContent);
+            return resultContent.GetResultContentAsync<TResponse>(task, this.Formatters, this.ErrorType, this.ErrorHandle);
+        }
         #endregion Put
         #endregion 方法
         #region 内容解析方法
@@ -292,109 +322,8 @@ namespace SDK.BaseAPI
         protected internal void SetFormatter(System.Net.Http.Formatting.MediaTypeFormatter formatter) { if (formatter != null) this.Formatter = formatter; }
         protected internal void SetFormatters(System.Net.Http.Formatting.MediaTypeFormatter[] formatters) { if (formatters != null) this.Formatters = formatters; }
         protected internal void SetMediaTypeFormatter(Func<MediaType, string[], System.Net.Http.Formatting.MediaTypeFormatter> func) { if (func != null) this.getMediaTypeFormatterFunc = func; }
-        private async Task<T> GetResultContentAsync<T>(Task<HttpResponseMessage> task)
-        {
-            try
-            {
-                var message = task.Result;
-                try
-                {
-                    //1.TContent 是否继承自错误基类，是则使用TContent解析返回的正常及错误数据，不会抛出异常
-                    if (message != null && (message.IsSuccessStatusCode || typeof(IErrorResponse).IsAssignableFrom(typeof(T))))
-                    {
-                        try
-                        {
-                            var result = await message.Content?.ReadAsAsync<T>(this.Formatters);//解析响应体。阻塞！
-                            return result;
-                        }
-                        catch (Exception)
-                        {
-                        }
-                    }
-                }
-                catch (AggregateException)
-                {
-
-                }
-                catch (Exception)
-                {
-                    //throw;
-                }
-                if (typeof(T) == typeof(string))
-                {
-                    var result = await message.Content?.ReadAsStringAsync();//解析响应体。阻塞！
-                    return (T)(result as object);
-                }
-                else
-                {
-                    //throw;
-                }
-                try
-                {
-                    //2.是否指定异常错误类，是则尝试使用异常错误类解析错误，并且抛出错误
-                    if (message != null && !message.IsSuccessStatusCode && this.ErrorType != null)
-                    {
-                        if (!typeof(IErrorResponse).IsAssignableFrom(this.ErrorType))
-                        {
-                            throw new Exception("错误类必须继承自 " + nameof(IErrorResponse));
-                        }
-                        //var str = message.Content?.ReadAsStringAsync()?.Result;//解析响应体。阻塞！
-                        var result = await message.Content?.ReadAsAsync(this.ErrorType, this.Formatters);//解析响应体。阻塞！
-                        var error = result as IErrorResponse;
-                        throw new ApiException(error);
-                    }
-                }
-                catch (System.Net.Http.UnsupportedMediaTypeException)
-                {
-
-                }
-                catch (ApiException ex)
-                {
-                    throw ex;
-                }
-                catch (Exception)
-                {
-                    //throw;
-                }
-                //3.是否实现了自定义错误处理方法，有则执行错误处理方法
-                {
-                    //var str = message.Content?.ReadAsStringAsync()?.Result;//解析响应体。阻塞！
-                    var result = this.ErrorHandle?.Invoke(typeof(T), message);
-                    if (result != null)
-                        return (T)result;
-                    else
-                    {
-                        //抛出Exception异常
-                        //message.EnsureSuccessStatusCode();
-                        var resultStr = await message.Content?.ReadAsStringAsync();//解析响应体。阻塞！
-                        var reg = new System.Text.RegularExpressions.Regex("<title>(?<ErrMsg>.*)</title>");
-                        var errMsg = reg.Match(resultStr)?.Groups["ErrMsg"]?.Value;
-                        var error = new Exception(resultStr);
-                        if (string.IsNullOrWhiteSpace(errMsg))
-                        {
-                            throw new Exception("系统内部错误 " + message.ReasonPhrase, error);
-                        }
-                        else
-                        {
-                            throw new Exception(message.ReasonPhrase + " " + errMsg, error);
-                        }
-                    }
-                }
-            }
-            catch (ApiException ex)
-            {
-                throw ex;
-            }
-            catch (AggregateException ex)
-            {
-                throw new Exception(ex.DetailMessage1(), ex);
-            }
-            catch (Exception ex)
-            {
-                throw ex;
-            }
-        }
         #endregion 内容解析方法
+
 
         protected internal string UrlAddQuery(string url, string paramQuery)
         {
@@ -416,7 +345,6 @@ namespace SDK.BaseAPI
         {
             return Convert.ToBase64String(Encoding.UTF8.GetBytes(value));
         }
-
         public string FromBase64(string value)
         {
             return Encoding.UTF8.GetString(Convert.FromBase64String(value));
@@ -457,11 +385,9 @@ namespace SDK.BaseAPI
                                 //new Orchard.Utility.Json.NHibernateProxyConverter(isContractNHibernateProxy),
                                 //new Orchard.Utility.Json.EncodeNHibernateContractResolver(setPropertySettingsFromAttributes, isContractNHibernateProxy)
                             },
-
                             Error = (currentObject, errorContext) =>
-                                    {
-
-                                    }
+                            {
+                            }
                         }
                     };
                     this.DefaultRequestHeaders.Accept.Add(new System.Net.Http.Headers.MediaTypeWithQualityHeaderValue("application/json"));
