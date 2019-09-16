@@ -118,13 +118,21 @@ namespace SDK.BaseAPI
             return formatter.Deserialize<T>(str);
         }
         #region Get
-        public TResponse GetAsync<TResponse>(string requestUri)
+        public TResponse Get<TResponse>(string requestUri)
+        {
+            return this.GetAsync<TResponse>(requestUri).Result;
+        }
+        public TResponse Get<TResponse>(string requestUri, IEnumerable<KeyValuePair<string, string>> nameValueCollection)
+        {
+            return this.GetAsync<TResponse>(requestUri, nameValueCollection).Result;
+        }
+        public Task<TResponse> GetAsync<TResponse>(string requestUri)
         {
             var task = this.GetAsync(requestUri);
-            return GetResultContent<TResponse>(task);
+            return GetResultContentAsync<TResponse>(task);
             //return HttpClientExtensions.PostAsync(this, requestUri, value, Formatter);
         }
-        public TResponse GetAsync<TResponse>(string requestUri, IEnumerable<KeyValuePair<string, string>> nameValueCollection)
+        public Task<TResponse> GetAsync<TResponse>(string requestUri, IEnumerable<KeyValuePair<string, string>> nameValueCollection)
         {
             var dic = _ifNullRemove ? (nameValueCollection.Where(f => !string.IsNullOrWhiteSpace(f.Key) && f.Value != null && !string.IsNullOrWhiteSpace(f.Value.ToString()))) : nameValueCollection;
             var _requestUri = UrlAddQuery(requestUri, string.Join("&", dic.Select(f => f.Key + "=" + f.Value)));
@@ -132,21 +140,63 @@ namespace SDK.BaseAPI
         }
         #endregion Get
         #region Post
-        public TResponse PostFormUrlAsync<TResponse>(string requestUri, IEnumerable<KeyValuePair<string, string>> nameValueCollection)
+        public TResponse PostFormUrl<TResponse>(string requestUri, IEnumerable<KeyValuePair<string, string>> nameValueCollection)
+        {
+            return PostFormUrlAsync<TResponse>(requestUri, nameValueCollection).Result;
+        }
+        public TResponse PostBytes<TResponse>(string requestUri, byte[] bytes, string mediaType = null)
+        {
+            return PostBytesAsync<TResponse>(requestUri, bytes, mediaType).Result;
+        }
+        public HttpResponseMessage PostBytes(string requestUri, byte[] bytes, string mediaType = null)
+        {
+            return PostBytesAsync<HttpResponseMessage>(requestUri, bytes, mediaType).Result;
+        }
+        public TResponse PostString<TResponse>(string requestUri, string str, Encoding encoding = null, string mediaType = null)
+        {
+            return PostStringAsync<TResponse>(requestUri, str, encoding, mediaType).Result;
+        }
+        public TResponse PostStream<TResponse>(string requestUri, Stream content)
+        {
+            return PostStreamAsync<TResponse>(requestUri, content).Result;
+        }
+
+        public HttpResponseMessage Post<TRequest>(string requestUri, TRequest value, string mediaType = null)
+        {
+            return PostAsync<TRequest>(requestUri, value, mediaType).Result;
+        }
+        public HttpResponseMessage Post<TRequest>(Uri requestUri, TRequest value, string mediaType = null)
+        {
+            return PostAsync<TRequest>(requestUri, value, mediaType).Result;
+        }
+        public TResponse Post<TRequest, TResponse>(string requestUri, TRequest value, string mediaType = null)
+        {
+            return PostAsync<TRequest, TResponse>(requestUri, value, mediaType).Result;
+        }
+        public TResponse Post<TRequest, TResponse>(Uri requestUri, TRequest value, string mediaType = null)
+        {
+            return PostAsync<TRequest, TResponse>(requestUri, value, mediaType).Result;
+        }
+
+
+
+
+
+        public Task<TResponse> PostFormUrlAsync<TResponse>(string requestUri, IEnumerable<KeyValuePair<string, string>> nameValueCollection)
         {
             var dic = _ifNullRemove ? (nameValueCollection.Where(f => !string.IsNullOrWhiteSpace(f.Key) && f.Value != null && !string.IsNullOrWhiteSpace(f.Value.ToString()))) : nameValueCollection;
             var task = base.PostAsync(requestUri, new FormUrlEncodedContent(dic));
-            return GetResultContent<TResponse>(task);
+            return GetResultContentAsync<TResponse>(task);
         }
         //public TResponse PostFormUrlAsync<TResponse>(string requestUri, string query)
         //{
         //   var q= System.Web.HttpUtility.ParseQueryString(query);
 
         //}
-        public TResponse PostBytesAsync<TResponse>(string requestUri, byte[] bytes, string mediaType = null)
+        public Task<TResponse> PostBytesAsync<TResponse>(string requestUri, byte[] bytes, string mediaType = null)
         {
             var task = PostBytesAsync(requestUri, bytes, mediaType);
-            return GetResultContent<TResponse>(task);
+            return GetResultContentAsync<TResponse>(task);
         }
         public Task<HttpResponseMessage> PostBytesAsync(string requestUri, byte[] bytes, string mediaType = null)
         {
@@ -159,27 +209,20 @@ namespace SDK.BaseAPI
             return task;
         }
 
-        public TResponse PostStringAsync<TResponse>(string requestUri, string str, Encoding encoding = null, string mediaType = null)
+        public Task<TResponse> PostStringAsync<TResponse>(string requestUri, string str, Encoding encoding = null, string mediaType = null)
         {
             var task = base.PostAsync(requestUri, new StringContent(str, encoding, mediaType));
-            return GetResultContent<TResponse>(task);
+            return GetResultContentAsync<TResponse>(task);
         }
-        public TResponse PostStreamAsync<TResponse>(string requestUri, Stream content)
+        public Task<TResponse> PostStreamAsync<TResponse>(string requestUri, Stream content)
         {
             var task = base.PostAsync(requestUri, new StreamContent(content));
-            return GetResultContent<TResponse>(task);
+            return GetResultContentAsync<TResponse>(task);
         }
 
         public Task<HttpResponseMessage> PostAsync<TRequest>(string requestUri, TRequest value, string mediaType = null)
         {
-            if (value is HttpContent)
-            {
-                return base.PostAsync(requestUri, value as HttpContent);
-            }
-            else
-            {
-                return HttpClientExtensions.PostAsync(this, requestUri, value, Formatter, mediaType);
-            }
+            return PostAsync(new Uri(requestUri), value, mediaType);
         }
         public Task<HttpResponseMessage> PostAsync<TRequest>(Uri requestUri, TRequest value, string mediaType = null)
         {
@@ -192,35 +235,43 @@ namespace SDK.BaseAPI
                 return HttpClientExtensions.PostAsync(this, requestUri, value, Formatter, mediaType);
             }
         }
-        public TResponse PostAsync<TRequest, TResponse>(string requestUri, TRequest value, string mediaType = null)
+        public Task<TResponse> PostAsync<TRequest, TResponse>(string requestUri, TRequest value, string mediaType = null)
         {
             if (value is HttpContent)
             {
                 var task = base.PostAsync(requestUri, value as HttpContent);
-                return GetResultContent<TResponse>(task);
+                return GetResultContentAsync<TResponse>(task);
             }
             else
             {
                 var task = HttpClientExtensions.PostAsync(this, requestUri, value, Formatter, mediaType);
-                return GetResultContent<TResponse>(task);
+                return GetResultContentAsync<TResponse>(task);
                 //return this.PostAsync<string, string>("api/WebErp.Orders/Order/GetOrdersByExpression?count={count}".Replace("{count}", System.Convert.ToString(count)), predicate);//?.Result?.GetResultContent<Order[]>(this.MediaTypeFormatters);
             }
         }
-        public TResponse PostAsync<TRequest, TResponse>(Uri requestUri, TRequest value, string mediaType = null)
+        public Task<TResponse> PostAsync<TRequest, TResponse>(Uri requestUri, TRequest value, string mediaType = null)
         {
             if (value is HttpContent)
             {
                 var task = base.PostAsync(requestUri, value as HttpContent);
-                return GetResultContent<TResponse>(task);
+                return GetResultContentAsync<TResponse>(task);
             }
             else
             {
                 var task = HttpClientExtensions.PostAsync(this, requestUri, value, Formatter, mediaType);
-                return GetResultContent<TResponse>(task);
+                return GetResultContentAsync<TResponse>(task);
             }
         }
         #endregion Post
         #region Put
+        public HttpResponseMessage Put<TRequest>(string requestUri, TRequest value, string mediaType = null)
+        {
+            return HttpClientExtensions.PutAsync(this, requestUri, value, Formatter, mediaType).Result;
+        }
+        public HttpResponseMessage Put<TRequest>(Uri requestUri, TRequest value, string mediaType = null)
+        {
+            return HttpClientExtensions.PutAsync(this, requestUri, value, Formatter, mediaType).Result;
+        }
         public Task<HttpResponseMessage> PutAsync<TRequest>(string requestUri, TRequest value, string mediaType = null)
         {
             return HttpClientExtensions.PutAsync(this, requestUri, value, Formatter, mediaType);
@@ -241,7 +292,7 @@ namespace SDK.BaseAPI
         protected internal void SetFormatter(System.Net.Http.Formatting.MediaTypeFormatter formatter) { if (formatter != null) this.Formatter = formatter; }
         protected internal void SetFormatters(System.Net.Http.Formatting.MediaTypeFormatter[] formatters) { if (formatters != null) this.Formatters = formatters; }
         protected internal void SetMediaTypeFormatter(Func<MediaType, string[], System.Net.Http.Formatting.MediaTypeFormatter> func) { if (func != null) this.getMediaTypeFormatterFunc = func; }
-        private T GetResultContent<T>(Task<HttpResponseMessage> task)
+        private async Task<T> GetResultContentAsync<T>(Task<HttpResponseMessage> task)
         {
             try
             {
@@ -253,8 +304,8 @@ namespace SDK.BaseAPI
                     {
                         try
                         {
-                            var result = message.Content?.ReadAsAsync<T>(this.Formatters);//解析响应体。阻塞！
-                            return result.Result;
+                            var result = await message.Content?.ReadAsAsync<T>(this.Formatters);//解析响应体。阻塞！
+                            return result;
                         }
                         catch (Exception)
                         {
@@ -271,8 +322,8 @@ namespace SDK.BaseAPI
                 }
                 if (typeof(T) == typeof(string))
                 {
-                    var result = message.Content?.ReadAsStringAsync();//解析响应体。阻塞！
-                    return (T)(result.Result as object);
+                    var result = await message.Content?.ReadAsStringAsync();//解析响应体。阻塞！
+                    return (T)(result as object);
                 }
                 else
                 {
@@ -288,8 +339,8 @@ namespace SDK.BaseAPI
                             throw new Exception("错误类必须继承自 " + nameof(IErrorResponse));
                         }
                         //var str = message.Content?.ReadAsStringAsync()?.Result;//解析响应体。阻塞！
-                        var result = message.Content?.ReadAsAsync(this.ErrorType, this.Formatters);//解析响应体。阻塞！
-                        var error = result.Result as IErrorResponse;
+                        var result = await message.Content?.ReadAsAsync(this.ErrorType, this.Formatters);//解析响应体。阻塞！
+                        var error = result as IErrorResponse;
                         throw new ApiException(error);
                     }
                 }
@@ -315,7 +366,7 @@ namespace SDK.BaseAPI
                     {
                         //抛出Exception异常
                         //message.EnsureSuccessStatusCode();
-                        var resultStr = message.Content?.ReadAsStringAsync()?.Result;//解析响应体。阻塞！
+                        var resultStr = await message.Content?.ReadAsStringAsync();//解析响应体。阻塞！
                         var reg = new System.Text.RegularExpressions.Regex("<title>(?<ErrMsg>.*)</title>");
                         var errMsg = reg.Match(resultStr)?.Groups["ErrMsg"]?.Value;
                         var error = new Exception(resultStr);
